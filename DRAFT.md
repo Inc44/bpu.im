@@ -12,7 +12,7 @@
 - User authentication for saving quiz progress and marking read articles; anonymous access for reading and basic interaction.
 - Responsive design for desktop and mobile.
 - Search functionality for articles.
-- Admin interface for uploading/editing Markdown articles and quizzes.
+- Admin interface for uploading/editing Markdown articles and quizzes; the admin is the only author.
 
 ### Non-Functional Requirements
 
@@ -30,38 +30,38 @@
 - As a learner, I run code from an article or my input and view output.
 - As an author, I write articles in Markdown with quiz/code blocks.
 
-### Tech Stack
+## Tech Stack
 
 Prioritize simplicity and ease of development: minimal code. Use the most popular languages, frameworks, and libraries with the biggest support. Use specialized tools instead of inventing our own. Avoid rare dependencies with little to no support.
 
-### Backend (not yet decided)
+### Backend
 
-- Framework: Django, Flask, Laravel
-- Language:
-- Database: MariaDB, MySQL, PostgreSQL, SQLite
-- Markdown Processing:
-- Code Execution:
-- Other:
+- Framework: Flask.
+- Language: Python.
+- Database: SQLite.
+- Markdown Processing: Python-Markdown (convert Markdown with special syntax quiz to HTML; no conversion for articles).
+- Code Execution: Self-hosted API for Judge0 (no Zig support) or glot.io.
+- Other: Flask-Login (authentication); Flask-SQLAlchemy (database interactions); Werkzeug (security).
 
-### Frontend (not yet decided)
+### Frontend
 
-- Framework: HTMX, Next, React, Solid, Svelte, Vanilla, Vue
-- CSS: Bootstrap, Tailwind, Vanilla
-- Fonts: Monospaced via Google Fonts
-- Math Rendering: KaTeX, MathJax
-- Graphics: Asymptote (interactive 3D graphs in HTML), Mermaid, TikZ, chemfig, pgfplots, tkz-tab
-- Quizzes:
-- Other:
+- Framework: HTMX.
+- CSS: Tailwind.
+- Fonts: Monospaced via Google Fonts.
+- Math Rendering: KaTeX, MathJax.
+- Graphics (via LaTeX backend compilation): Asymptote (HTML for interactive 3D graphs, SVG for static), Mermaid (charts, diagrams), TikZ (Graph, Tree), chemfig, pgfplots, tkz-tab.
+- Quizzes: Vanilla JS with HTMX for form submissions and feedback.
+- Other: Marked (Markdown preview).
 
 ### Deployment
 
 - Domain: bpu.im, with several subdomains used for other projects.
-- Proxy: Cloudflare
+- Proxy: Cloudflare (CDN, DDoS, CAPTCHA, compression).
 - Hosting: Netcup ARM64 6 vCore 8 GB RAM 256 GB NVMe Debian; may be migrated to x86_64 in the future.
-- Server: Apache
-- Compression: Precompressed and dynamic
-- Version Control: Git
-- IDE: VSCode
+- Server: Apache.
+- Compression: Precompressed and dynamic.
+- Version Control: Git.
+- IDE: VSCode.
 
 ### Inspiration
 
