@@ -49,7 +49,7 @@ Prioritize simplicity and ease of development: minimal code. Use the most popula
 - CSS: Bootstrap, Tailwind, Vanilla
 - Fonts: Monospaced via Google Fonts
 - Math Rendering: KaTeX, MathJax
-- Graphics: Asymptote, TikZ
+- Graphics: Asymptote (interactive 3D graphs in HTML), Mermaid, TikZ, chemfig, pgfplots, tkz-tab
 - Quizzes:
 - Other:
 
@@ -62,3 +62,8 @@ Prioritize simplicity and ease of development: minimal code. Use the most popula
 - Compression: Precompressed and dynamic
 - Version Control: Git
 - IDE: VSCode
+
+### Inspiration
+
+- [Brilliant](https://brilliant.org)
+- [Khan Academy](https://www.khanacademy.org)
