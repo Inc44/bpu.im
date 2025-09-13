@@ -12,7 +12,7 @@
 - User authentication for saving quiz progress and marking read articles; anonymous access for reading and basic interaction.
 - Responsive design for desktop and mobile devices.
 - Search functionality for articles by title, content, or tags.
-- Admin interface for uploading and editing Markdown articles and quizzes; the admin is the only author.
+- Admin interface for uploading and editing Markdown articles containing code blocks and quizzes; the admin is the only author.
 
 ### Non-Functional Requirements
 
@@ -51,7 +51,7 @@ Prioritize simplicity and ease of development with minimal code. Select popular 
 - Math Rendering: KaTeX (fast, lightweight) as primary; MathJax as fallback for complex equations.
 - Graphics (via LaTeX backend compilation): Asymptote (compiles to SVG/HTML for static/interactive graphs); Mermaid (charts and diagrams); TikZ (graphs and trees); chemfig, pgfplots, tkz-tab.
 - Quizzes: Vanilla JavaScript with HTMX for submissions and feedback rendering.
-- Other: Marked.js (client-side Markdown preview for admin editing).
+- Other: Marked.js (client-side Markdown preview for admin editing), admin editing snippet completion.
 
 ### Deployment
 
@@ -66,5 +66,8 @@ Prioritize simplicity and ease of development with minimal code. Select popular 
 ### Inspiration
 
 - [Brilliant](https://brilliant.org)
+- [GeeksforGeeks](https://www.geeksforgeeks.org)
 - [Khan Academy](https://www.khanacademy.org)
 - [Obsidian](https://obsidian.md)
+- [Overleaf](https://www.overleaf.com)
+- [W3Schools](https://www.w3schools.com)
