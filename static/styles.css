@@ -1,0 +1,54 @@
+@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap");
+
+body
+{
+	font-family: "JetBrains Mono", monospace;
+}
+
+.pixelated-shadow
+{
+	box-shadow:
+		0.6rem 0.6rem 0 0 var(--color-green-400),
+		0.45rem 0.45rem 0 0 var(--color-green-400),
+		0.3rem 0.3rem 0 0 var(--color-green-400),
+		0.15rem 0.15rem 0 0 var(--color-green-400);
+}
+
+.glitch:hover
+{
+	animation: glitch 0.3s cubic-bezier(0.25, 0.50, 0.50, 1.00) both;
+}
+
+@keyframes glitch
+{
+	0%
+	{
+		transform: translate(0);
+	}
+
+	20%
+	{
+		transform: translate(-0.125rem, 0.125rem);
+	}
+
+	40%
+	{
+		transform: translate(-0.125rem, -0.125rem);
+	}
+
+	60%
+	{
+		transform: translate(0.125rem, 0.125rem);
+	}
+
+	80%
+	{
+		transform: translate(0.125rem, -0.125rem);
+	}
+
+	100%
+	{
+		transform: translate(0);
+	}
+}
