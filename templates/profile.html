@@ -13,7 +13,7 @@
 	</section>
 	<section class="border border-green-400 mb-8 p-8">
 		<h2 class="font-bold mb-4 text-2xl">Read Articles ({{ read_articles|length }})</h2>
-		<ul class="space-y-2">{% for article in read_articles %}<li><a href="" class="hover:text-white">{{ article.title }}</a></li>{% else %}<li>None yet.</li>{% endfor %}</ul>
+		<ul class="space-y-2">{% for article in read_articles %}<li><a href="/a/{{ article.slug }}" class="hover:text-white">{{ article.title }}</a></li>{% else %}<li>None yet.</li>{% endfor %}</ul>
 	</section>
 	<section class="border border-green-400 p-8">
 		<h2 class="font-bold mb-4 text-2xl">Passed Quizzes ({{ passed_quizzes|length }})</h2>

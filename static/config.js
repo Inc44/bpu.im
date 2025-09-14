@@ -26,3 +26,12 @@ document.addEventListener("DOMContentLoaded", () =>
 		throwOnError: false
 	});
 });
+window.MathJax = {
+	tex:
+	{
+		inlineMath: [
+			['$', '$'],
+			['\\(', '\\)']
+		]
+	}
+};
