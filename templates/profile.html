@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% block title %}Profile - bpu.im{% endblock %}{% block content %}<div class="max-w-3xl mx-auto">
+	<h1 class="font-bold mb-8 text-3xl text-center">Profile</h1>
+	<section class="border border-green-400 mb-8 p-8">
+		<h2 class="font-bold mb-4 text-2xl">Account</h2>
+		<p class="break-all mb-4">Username: {{ current_user.username }}</p>
+		<form method="post" action="/new_password" class="space-y-4">
+			<div>
+				<label class="block mb-2">New Password</label>
+				<input type="password" name="password" required class="bg-black border border-green-400 px-2 py-1 text-green-400 w-full">
+			</div>
+			<button type="submit" class="border border-green-400 hover:bg-green-400 hover:text-black px-4 py-2">Change Password</button>
+		</form>
+	</section>
+	<section class="border border-green-400 mb-8 p-8">
+		<h2 class="font-bold mb-4 text-2xl">Read Articles ({{ read_articles|length }})</h2>
+		<ul class="space-y-2">{% for article in read_articles %}<li><a href="" class="hover:text-white">{{ article.title }}</a></li>{% else %}<li>None yet.</li>{% endfor %}</ul>
+	</section>
+	<section class="border border-green-400 p-8">
+		<h2 class="font-bold mb-4 text-2xl">Passed Quizzes ({{ passed_quizzes|length }})</h2>
+		<p class="mb-4">Average Score: {{ average_score }}%</p>
+		<ul class="space-y-2">{% for quiz in passed_quizzes %}<li>{{ quiz.title }} – {{ quiz.score }}%</li>{% else %}<li>No quizzes taken yet.</li>{% endfor %}</ul>
+	</section>
+</div>{% endblock %}
