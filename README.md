@@ -22,6 +22,7 @@ conda activate bpu.im
 git clone https://github.com/Inc44/bpu.im.git
 cd bpu.im
 pip install -r requirements.txt
+npx @tailwindcss/cli -i static/styles.css -o static/styles+tailwind.css
 ```
 
 ## 🙏 Thanks

@@ -1,0 +1,23 @@
+{
+	"name": "bpu.im",
+	"version": "2025.9.14",
+	"description": "Educational website for articles on mathematics, computer science, languages, physics, chemistry, and engineering, with interactive quizzes, code execution, and graphics rendering.",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Inc44/bpu.im.git"
+	},
+	"author": "Inc44",
+	"license": "AGPL-3.0",
+	"bugs": {
+		"url": "https://github.com/Inc44/bpu.im/issues"
+	},
+	"homepage": "https://github.com/Inc44/bpu.im#readme",
+	"dependencies": {
+		"@tailwindcss/cli": "^4.1.13",
+		"tailwindcss": "^4.1.13"
+	}
+}
