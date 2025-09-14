@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block title %}Home - bpu.im{% endblock %}{% block content %}<div class="max-w-3xl mx-auto">
+	<h1 class="font-bold mb-8 text-3xl text-center">Articles</h1>
+	<ul class="space-y-4">{% for article in articles %}<li class="border border-green-400 p-4 hover:bg-gray-900">
+		</li>{% else %}<li class="text-center">No articles found.</li>{% endfor %}</ul>
+</div>{% endblock %}

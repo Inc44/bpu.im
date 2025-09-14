@@ -1,5 +1,8 @@
-bpu.db
-bpu.sqbpro
+TODO.md
+articles
+bpu.im.db
+bpu.im.sqbpro
+bpu.im.sql
 node_modules
 package-lock.json
 styles+tailwind.css
