@@ -1,0 +1,13 @@
+<header class="border-b-2 border-green-400 p-4">
+	<div class="container flex items-center justify-between mx-auto">
+		<a href="/" class="font-bold glitch text-2xl">bpu.im</a>
+		<form action="/search" method="get" class="flex">
+			<input type="text" name="q" placeholder="Search" class="bg-black border border-green-400 px-2 py-1 text-green-400">
+			<button type="submit" class="border border-green-400 hover:bg-green-400 hover:text-black px-2 py-1">Search</button>
+		</form>
+		<nav class="flex gap-4">{% if current_user.is_authenticated %}<a href="/profile" class="hover:text-white">Profile</a>
+			<a href="/logout" class="hover:text-white">Logout</a>{% else %}<a href="/login" class="hover:text-white">Login</a>
+			<a href="/register" class="hover:text-white">Register</a>{% endif %}
+		</nav>
+	</div>
+</header>

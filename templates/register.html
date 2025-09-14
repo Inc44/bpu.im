@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% block title %}Register - bpu.im{% endblock %}{% block content %}<div class="max-w-md mx-auto">
+	<h1 class="font-bold mb-8 text-3xl text-center">Register</h1>
+	<form method="post" class="border border-green-400 p-8">
+		<div class="mb-4">
+			<label class="block mb-2">Username</label>
+			<input type="text" name="username" required class="bg-black border border-green-400 px-2 py-1 text-green-400 w-full">
+		</div>
+		<div class="mb-4">
+			<label class="block mb-2">Password</label>
+			<input type="password" name="password" required class="bg-black border border-green-400 px-2 py-1 text-green-400 w-full">
+		</div>
+		<button type="submit" class="border border-green-400 hover:bg-green-400 hover:text-black px-4 py-2 w-full">Register</button>
+	</form>
+</div>{% endblock %}
