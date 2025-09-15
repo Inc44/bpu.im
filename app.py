@@ -2,8 +2,23 @@ from __future__ import annotations
 
 import datetime
 
-from flask import Flask
-from flask_login import LoginManager, UserMixin
+from flask import (
+	Flask,
+	abort,
+	make_response,
+	redirect,
+	render_template,
+	url_for,
+	request,
+)
+from flask_login import (
+	LoginManager,
+	UserMixin,
+	login_user,
+	login_required,
+	logout_user,
+	current_user,
+)
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -26,6 +41,13 @@ class User(db.Model, UserMixin):
 class Article(db.Model):
 	id = db.Column(db.Integer, primary_key=True)
 	file_path = db.Column(db.String(260), nullable=False)
+	title = db.Column(db.String(255), nullable=False)
+	slug = db.Column(db.String(255), unique=True, nullable=False)
+	modified_at = db.Column(
+		db.DateTime, default=datetime.datetime.now(datetime.timezone.utc)
+	)
+	tags = db.Column(db.String(255), default="")
+	content = db.Column(db.Text, default="")
 
 
 class Read(db.Model):
@@ -55,6 +77,124 @@ def load_user(id):
 	return User.query.get(int(id))
 
 
+def register_routes(app):
+	@app.route("/")
+	def index():
+		articles = Article.query.order_by(Article.modified_at.desc()).all()
+		return render_template("index.html", articles=articles)
+
+	@app.route("/a/<slug>")
+	def article(slug):
+		a = Article.query.filter_by(slug=slug).first()
+		if not a:
+			abort(404)
+		return render_template("components/article.html", article=a)
+
+	@app.route("/search")
+	def search():
+		q = request.args.get("q", "").strip()
+		if not q:
+			return render_template("search.html", query=q, results=[])
+		pattern = f"%{q}%"
+		results = (
+			Article.query.filter(
+				db.or_(
+					Article.title.ilike(pattern),
+					Article.modified_at.ilike(pattern),
+					Article.tags.ilike(pattern),
+					Article.content.ilike(pattern),
+				)
+			)
+			.order_by(Article.modified_at.desc())
+			.all()
+		)
+		return render_template("search.html", query=q, results=results)
+
+	@app.route("/login", methods=["GET", "POST"])
+	def login():
+		if request.method == "POST":
+			username = request.form.get("username", "").strip()
+			password = request.form.get("password", "")
+			user = User.query.filter_by(username=username).first()
+			if user and user.check_password(password):
+				login_user(user)
+				return redirect(url_for("index"))
+			return make_response(render_template("login.html"))
+		return render_template("login.html")
+
+	@app.route("/register", methods=["GET", "POST"])
+	def register():
+		if request.method == "POST":
+			username = request.form.get("username", "").strip()
+			password = request.form.get("password", "")
+			if not username or not password:
+				return render_template("register.html")
+			user = User.query.filter_by(username=username).first()
+			if user:
+				return render_template("register.html")
+			user = User(username=username)
+			user.set_password(password)
+			db.session.add(user)
+			db.session.commit()
+			login_user(user)
+			return redirect(url_for("index"))
+		return render_template("register.html")
+
+	@app.route("/logout")
+	@login_required
+	def logout():
+		logout_user()
+		return redirect(url_for("index"))
+
+	@app.route("/profile")
+	@login_required
+	def profile():
+		read_articles = (
+			db.session.query(Article)
+			.join(Read, Article.id == Read.article_id)
+			.filter(Read.user_id == current_user.id)
+			.order_by(Article.modified_at.desc())
+			.all()
+		)
+		taken_quizzes = (
+			Quiz.query.filter_by(user_id=current_user.id)
+			.order_by(Quiz.taken_at.desc())
+			.all()
+		)
+		average_score = 0
+		if taken_quizzes:
+			total_score = sum(taken_quiz.score for taken_quiz in taken_quizzes)
+			average_score = round(total_score / len(taken_quizzes))
+		return render_template(
+			"profile.html",
+			read_articles=read_articles,
+			taken_quizzes=taken_quizzes,
+			average_score=average_score,
+		)
+
+	@app.route("/new_password", methods=["POST"])
+	@login_required
+	def new_password():
+		password = request.form.get("password", "")
+		if password:
+			current_user.set_password(password)
+			db.session.commit()
+		return redirect(url_for("profile"))
+
+	@app.route("/mark_read/<slug>", methods=["POST"])
+	def mark_read(slug):
+		if not current_user.is_authenticated:
+			return "", 204
+		a = Article.query.filter_by(slug=slug).first()
+		if not a:
+			return "", 404
+		marked = Read.query.filter_by(user_id=current_user.id, article_id=a.id).first()
+		if not marked:
+			db.session.add(Read(user_id=current_user.id, article_id=a.id))
+			db.session.commit()
+		return "", 204
+
+
 def quiz_result(score, answers):
 	results = []
 	for idx, answer in enumerate(answers, start=1):
@@ -72,4 +212,5 @@ if __name__ == "__main__":
 	login_manager.init_app(app)
 	with app.app_context():
 		db.create_all()
+	register_routes(app)
 	app.run()
