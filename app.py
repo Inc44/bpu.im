@@ -242,6 +242,7 @@ def parse_article(path: Path) -> Dict[str, Any]:
 	title = path.stem.strip().title()
 	lines = read_text(path).splitlines()
 	in_tags = False
+	in_mermaid = False
 	tags = []
 	content_lines = []
 	for line in lines:
@@ -256,12 +257,20 @@ def parse_article(path: Path) -> Dict[str, Any]:
 				if tag:
 					tags.append(tag)
 			continue
+		if line.strip() == "```mermaid":
+			in_mermaid = True
+			content_lines.append('<pre class="mermaid">')
+			continue
+		if in_mermaid and line.strip() == "```":
+			in_mermaid = False
+			content_lines.append("</pre>")
+			continue
 		content_lines.append(line)
 	content = "\n".join(content_lines)
 	toc = parse_table_of_contents(content_lines)
 	return {
 		"title": title,
-		"slug": slugify(title),
+		"slug": slugify(title, separator="_", lowercase=False),
 		"modified_at": datetime.datetime.fromtimestamp(
 			path.stat().st_mtime, tz=datetime.timezone.utc
 		),
