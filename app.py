@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import datetime
 import json
-import os
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -54,11 +53,11 @@ class Article(db.Model):
 	)
 	tags = db.Column(db.String(255), default="")
 	content = db.Column(db.Text, default="")
-	table_of_contents = db.Column(db.Text, default="[]")
+	toc = db.Column(db.Text, default="[]")
 	quiz = db.Column(db.Text, default="[]")
 
 	def get_table_of_contents(self) -> List[str]:
-		return json.loads(self.table_of_contents or "[]")
+		return json.loads(self.toc or "[]")
 
 	def get_quiz(self) -> List[Dict[str, Any]]:
 		return json.loads(self.quiz or "[]")
@@ -239,6 +238,61 @@ def parse_table_of_contents(lines: List[str]) -> List[str]:
 	return toc
 
 
+def parse_article(path: Path) -> Dict[str, Any]:
+	title = path.stem.strip().title()
+	lines = read_text(path).splitlines()
+	in_tags = False
+	tags = []
+	content_lines = []
+	for line in lines:
+		if line.strip() == "---":
+			in_tags = not in_tags
+			continue
+		if in_tags:
+			if line.strip().lower() == "tags:":
+				continue
+			if line.lstrip().startswith("-"):
+				tag = line.lstrip()[1:].strip()
+				if tag:
+					tags.append(tag)
+			continue
+		content_lines.append(line)
+	content = "\n".join(content_lines)
+	toc = parse_table_of_contents(content_lines)
+	return {
+		"title": title,
+		"slug": slugify(title),
+		"modified_at": datetime.datetime.fromtimestamp(
+			path.stat().st_mtime, tz=datetime.timezone.utc
+		),
+		"tags": ", ".join(tags),
+		"content": content,
+		"toc": toc,
+	}
+
+
+def parse_quiz(path: Path):
+	pass
+
+
+def load_articles(root: Path) -> None:
+	for article_path in root.glob("*.md"):
+		article_data = parse_article(article_path)
+		quiz_path = article_path.parent / "quizzes" / f"{article_path.stem}.md"
+		quiz_data = parse_quiz(quiz_path)
+		article = Article.query.filter_by(slug=article_data["slug"]).first()
+		if article is None:
+			article = Article(slug=article_data["slug"], file_path=str(article_path))
+			db.session.add(article)
+		article.title = article_data["title"]
+		article.modified_at = article_data["modified_at"]
+		article.tags = article_data["tags"]
+		article.content = article_data["content"]
+		article.toc = json.dumps(article_data["toc"], indent="\t", ensure_ascii=False)
+		article.quiz = json.dumps(quiz_data, indent="\t", ensure_ascii=False)
+	db.session.commit()
+
+
 def quiz_result(score: int, answers: List[Dict[str, bool]]) -> str:
 	results = [
 		f"<li>Q{idx+1}: {'Correct' if answer['ok'] else 'Incorrect'}</li>"
@@ -259,5 +313,6 @@ if __name__ == "__main__":
 	login_manager.init_app(app)
 	with app.app_context():
 		db.create_all()
+		load_articles(Path(__file__).parent / "articles")
 	register_routes(app)
 	app.run()
