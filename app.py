@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import datetime
+import json
+import os
 
 from flask import (
 	Flask,
@@ -20,6 +22,7 @@ from flask_login import (
 	current_user,
 )
 from flask_sqlalchemy import SQLAlchemy
+from slugify import slugify
 from werkzeug.security import check_password_hash, generate_password_hash
 
 db = SQLAlchemy()
@@ -48,6 +51,14 @@ class Article(db.Model):
 	)
 	tags = db.Column(db.String(255), default="")
 	content = db.Column(db.Text, default="")
+	table_of_contents = db.Column(db.Text, default="[]")
+	quiz = db.Column(db.Text, default="[]")
+
+	def get_table_of_contents(self):
+		return json.loads(self.table_of_contents or "[]")
+
+	def get_quiz(self):
+		return json.loads(self.quiz or "[]")
 
 
 class Read(db.Model):
@@ -193,6 +204,30 @@ def register_routes(app):
 			db.session.add(Read(user_id=current_user.id, article_id=a.id))
 			db.session.commit()
 		return "", 204
+
+
+def read_text(path):
+	with open(path, "r", encoding="utf-8") as file:
+		return file.read()
+
+
+def read_title(path):
+	return str(os.path.splitext(os.path.basename(path))[0]).strip().title()
+
+
+def parse_table_of_contents(lines):
+	table = []
+	for line in lines:
+		line = line.lstrip()
+		if line.startswith("#"):
+			hash_count = 0
+			while hash_count < len(line) and line[hash_count] == "#":
+				hash_count += 1
+			if 1 <= hash_count <= 6:
+				header_text = line[hash_count:].strip()
+				header_level = f"h{hash_count}"
+				table.append((header_level, header_text))
+	return table
 
 
 def quiz_result(score, answers):

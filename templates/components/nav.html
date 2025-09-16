@@ -1,4 +1,4 @@
 <nav class="sticky top-8">
 	<h3 class="font-bold mb-4 text-xl">On this page</h3>
-	<ul class="space-y-2">{% for heading in article.headings() %}<li><a href="#{{ heading|replace(' ', '_') }}" class="hover:text-white">{{ heading }}</a></li>{% else %}<li>No sections found.</li>{% endfor %}</ul>
+	<ul class="space-y-2">{% for heading in article.get_table_of_contents() %}<li><a href="#{{ heading|replace(' ', '_') }}" class="hover:text-white">{{ heading }}</a></li>{% else %}<li>No sections found.</li>{% endfor %}</ul>
 </nav>
