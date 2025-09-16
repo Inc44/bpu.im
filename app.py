@@ -3,6 +3,8 @@ from __future__ import annotations
 import datetime
 import json
 import os
+from pathlib import Path
+from typing import Any, Dict, List
 
 from flask import (
 	Flask,
@@ -23,6 +25,7 @@ from flask_login import (
 )
 from flask_sqlalchemy import SQLAlchemy
 from slugify import slugify
+from sqlalchemy import cast
 from werkzeug.security import check_password_hash, generate_password_hash
 
 db = SQLAlchemy()
@@ -34,10 +37,10 @@ class User(db.Model, UserMixin):
 	username = db.Column(db.String(63), unique=True, nullable=False)
 	password_hash = db.Column(db.String(255), nullable=False)
 
-	def set_password(self, password):
+	def set_password(self, password: str) -> None:
 		self.password_hash = generate_password_hash(password)
 
-	def check_password(self, password):
+	def check_password(self, password: str) -> bool:
 		return check_password_hash(self.password_hash, password)
 
 
@@ -54,10 +57,10 @@ class Article(db.Model):
 	table_of_contents = db.Column(db.Text, default="[]")
 	quiz = db.Column(db.Text, default="[]")
 
-	def get_table_of_contents(self):
+	def get_table_of_contents(self) -> List[str]:
 		return json.loads(self.table_of_contents or "[]")
 
-	def get_quiz(self):
+	def get_quiz(self) -> List[Dict[str, Any]]:
 		return json.loads(self.quiz or "[]")
 
 
@@ -84,18 +87,18 @@ class Quiz(db.Model):
 
 
 @login_manager.user_loader
-def load_user(id):
+def load_user(id: str):
 	return User.query.get(int(id))
 
 
-def register_routes(app):
+def register_routes(app: Flask) -> None:
 	@app.route("/")
 	def index():
 		articles = Article.query.order_by(Article.modified_at.desc()).all()
 		return render_template("index.html", articles=articles)
 
 	@app.route("/a/<slug>")
-	def article(slug):
+	def article(slug: str):
 		a = Article.query.filter_by(slug=slug).first()
 		if not a:
 			abort(404)
@@ -111,7 +114,7 @@ def register_routes(app):
 			Article.query.filter(
 				db.or_(
 					Article.title.ilike(pattern),
-					Article.modified_at.ilike(pattern),
+					cast(Article.modified_at, db.String).ilike(pattern),
 					Article.tags.ilike(pattern),
 					Article.content.ilike(pattern),
 				)
@@ -130,7 +133,9 @@ def register_routes(app):
 			if user and user.check_password(password):
 				login_user(user)
 				return redirect(url_for("index"))
-			return make_response(render_template("login.html"))
+			return make_response(
+				render_template("login.html", error="Invalid credentials"), 401
+			)
 		return render_template("login.html")
 
 	@app.route("/register", methods=["GET", "POST"])
@@ -139,10 +144,9 @@ def register_routes(app):
 			username = request.form.get("username", "").strip()
 			password = request.form.get("password", "")
 			if not username or not password:
-				return render_template("register.html")
-			user = User.query.filter_by(username=username).first()
-			if user:
-				return render_template("register.html")
+				return render_template("register.html", error="Missing fields")
+			if User.query.filter_by(username=username).first():
+				return render_template("register.html", error="Username taken")
 			user = User(username=username)
 			user.set_password(password)
 			db.session.add(user)
@@ -193,29 +197,28 @@ def register_routes(app):
 		return redirect(url_for("profile"))
 
 	@app.route("/mark_read/<slug>", methods=["POST"])
-	def mark_read(slug):
+	def mark_read(slug: str):
 		if not current_user.is_authenticated:
 			return "", 204
 		a = Article.query.filter_by(slug=slug).first()
 		if not a:
 			return "", 404
-		marked = Read.query.filter_by(user_id=current_user.id, article_id=a.id).first()
-		if not marked:
+		if not Read.query.filter_by(user_id=current_user.id, article_id=a.id).first():
 			db.session.add(Read(user_id=current_user.id, article_id=a.id))
 			db.session.commit()
 		return "", 204
 
 
-def read_text(path):
+def read_text(path: Path) -> str:
 	with open(path, "r", encoding="utf-8") as file:
 		return file.read()
 
 
-def read_title(path):
-	return str(os.path.splitext(os.path.basename(path))[0]).strip().title()
+def read_title(path: Path) -> str:
+	return path.stem.strip().title()
 
 
-def parse_table_of_contents(lines):
+def parse_table_of_contents(lines: List[str]) -> List[str]:
 	toc = []
 	for line in lines:
 		line = line.lstrip()
@@ -236,13 +239,16 @@ def parse_table_of_contents(lines):
 	return toc
 
 
-def quiz_result(score, answers):
-	results = []
-	for idx, answer in enumerate(answers, start=1):
-		state = "Correct" if answer["ok"] else "Incorrect"
-		results.append(f"<li>Q{idx}: {state}</li>")
-	result = '<ul class="list-disc pl-6 space-y-1">' + "".join(results) + "</ul>"
-	return f'<div class="border border-green-400 p-4 mt-4"><p class="mb-2">Score: {score}%</p>{result}</div>'
+def quiz_result(score: int, answers: List[Dict[str, bool]]) -> str:
+	results = [
+		f"<li>Q{idx+1}: {'Correct' if answer['ok'] else 'Incorrect'}</li>"
+		for idx, answer in enumerate(answers)
+	]
+	return (
+		f'<div class="border border-green-400 p-4 mt-4">'
+		f'<p class="mb-2">Score: {score}%</p>'
+		f'<ul class="list-disc pl-6 space-y-1">{"".join(results)}</ul></div>'
+	)
 
 
 if __name__ == "__main__":
