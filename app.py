@@ -24,7 +24,7 @@ from flask_login import (
 )
 from flask_sqlalchemy import SQLAlchemy
 from slugify import slugify
-from sqlalchemy import cast
+from sqlalchemy import cast, or_
 from werkzeug.security import check_password_hash, generate_password_hash
 
 db = SQLAlchemy()
@@ -56,7 +56,7 @@ class Article(db.Model):
 	toc = db.Column(db.Text, default="[]")
 	quiz = db.Column(db.Text, default="[]")
 
-	def get_table_of_contents(self) -> List[str]:
+	def get_table_of_contents(self) -> List[Dict[str, str]]:
 		return json.loads(self.toc or "[]")
 
 	def get_quiz(self) -> List[Dict[str, Any]]:
@@ -86,7 +86,7 @@ class Quiz(db.Model):
 
 
 @login_manager.user_loader
-def load_user(id: str):
+def load_user(id: str) -> User | None:
 	return User.query.get(int(id))
 
 
@@ -111,7 +111,7 @@ def register_routes(app: Flask) -> None:
 		pattern = f"%{q}%"
 		results = (
 			Article.query.filter(
-				db.or_(
+				or_(
 					Article.title.ilike(pattern),
 					cast(Article.modified_at, db.String).ilike(pattern),
 					Article.tags.ilike(pattern),
@@ -213,21 +213,16 @@ def read_text(path: Path) -> str:
 		return file.read()
 
 
-def read_title(path: Path) -> str:
-	return path.stem.strip().title()
-
-
-def parse_table_of_contents(lines: List[str]) -> List[str]:
+def parse_table_of_contents(lines: List[str]) -> List[Dict[str, str]]:
 	toc = []
 	for line in lines:
 		line = line.lstrip()
 		if line.startswith("#"):
-			hash_count = len(line) - len(line.lstrip("#"))
-			if 1 <= hash_count <= 6:
-				header_text = line[hash_count:].strip()
+			header_level = len(line) - len(line.lstrip("#"))
+			if 1 <= header_level <= 6:
+				header_text = line[header_level:].strip()
 				if header_text:
 					header_anchor = header_text.replace(" ", "_")
-					header_level = f"h{hash_count}"
 					toc.append(
 						{
 							"text": header_text,
@@ -280,8 +275,8 @@ def parse_article(path: Path) -> Dict[str, Any]:
 	}
 
 
-def parse_quiz(path: Path):
-	pass
+def parse_quiz(path: Path) -> List[Dict[str, Any]]:
+	return []
 
 
 def load_articles(root: Path) -> None:
