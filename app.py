@@ -216,18 +216,24 @@ def read_title(path):
 
 
 def parse_table_of_contents(lines):
-	table = []
+	toc = []
 	for line in lines:
 		line = line.lstrip()
 		if line.startswith("#"):
-			hash_count = 0
-			while hash_count < len(line) and line[hash_count] == "#":
-				hash_count += 1
+			hash_count = len(line) - len(line.lstrip("#"))
 			if 1 <= hash_count <= 6:
 				header_text = line[hash_count:].strip()
-				header_level = f"h{hash_count}"
-				table.append((header_level, header_text))
-	return table
+				if header_text:
+					header_anchor = header_text.replace(" ", "_")
+					header_level = f"h{hash_count}"
+					toc.append(
+						{
+							"text": header_text,
+							"anchor": header_anchor,
+							"level": header_level,
+						}
+					)
+	return toc
 
 
 def quiz_result(score, answers):
