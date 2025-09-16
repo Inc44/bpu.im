@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List
 
+import markdown
 from flask import (
 	Flask,
 	abort,
@@ -261,7 +262,9 @@ def parse_article(path: Path) -> Dict[str, Any]:
 			content_lines.append("</pre>")
 			continue
 		content_lines.append(line)
-	content = "\n".join(content_lines)
+	content = markdown.markdown(
+		"\n".join(content_lines), extensions=["codehilite", "fenced_code", "tables"]
+	)
 	toc = parse_table_of_contents(content_lines)
 	return {
 		"title": title,
