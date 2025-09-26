@@ -16,8 +16,8 @@
 		<ul class="space-y-2">{% for article in read_articles %}<li><a href="/a/{{ article.slug }}" class="hover:text-white">{{ article.title }}</a></li>{% else %}<li>None yet.</li>{% endfor %}</ul>
 	</section>
 	<section class="border border-green-400 p-8">
-		<h2 class="font-bold mb-4 text-2xl">Passed Quizzes ({{ passed_quizzes|length }})</h2>
+		<h2 class="font-bold mb-4 text-2xl">Taken Quizzes ({{ taken_quizzes|length }})</h2>
 		<p class="mb-4">Average Score: {{ average_score }}%</p>
-		<ul class="space-y-2">{% for quiz in passed_quizzes %}<li>{{ quiz.title }} – {{ quiz.score }}%</li>{% else %}<li>No quizzes taken yet.</li>{% endfor %}</ul>
+		<ul class="space-y-2">{% for quiz in taken_quizzes %}<li>{{ quiz.title }} – {{ quiz.score }}%</li>{% else %}<li>No quizzes taken yet.</li>{% endfor %}</ul>
 	</section>
 </div>{% endblock %}

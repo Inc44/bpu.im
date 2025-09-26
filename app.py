@@ -97,13 +97,6 @@ def register_routes(app: Flask) -> None:
 		articles = Article.query.order_by(Article.modified_at.desc()).all()
 		return render_template("index.html", articles=articles)
 
-	@app.route("/a/<slug>")
-	def article(slug: str):
-		a = Article.query.filter_by(slug=slug).first()
-		if not a:
-			abort(404)
-		return render_template("components/article.html", article=a)
-
 	@app.route("/search")
 	def search():
 		q = request.args.get("q", "").strip()
@@ -155,12 +148,6 @@ def register_routes(app: Flask) -> None:
 			return redirect(url_for("index"))
 		return render_template("register.html")
 
-	@app.route("/logout")
-	@login_required
-	def logout():
-		logout_user()
-		return redirect(url_for("index"))
-
 	@app.route("/profile")
 	@login_required
 	def profile():
@@ -172,7 +159,9 @@ def register_routes(app: Flask) -> None:
 			.all()
 		)
 		taken_quizzes = (
-			Quiz.query.filter_by(user_id=current_user.id)
+			db.session.query(Quiz, Article)
+			.join(Article, Quiz.article_id == Article.id)
+			.filter(Quiz.user_id == current_user.id)
 			.order_by(Quiz.taken_at.desc())
 			.all()
 		)
@@ -187,14 +176,57 @@ def register_routes(app: Flask) -> None:
 			average_score=average_score,
 		)
 
-	@app.route("/new_password", methods=["POST"])
+	@app.route("/logout")
 	@login_required
-	def new_password():
-		password = request.form.get("password", "")
-		if password:
-			current_user.set_password(password)
+	def logout():
+		logout_user()
+		return redirect(url_for("index"))
+
+	@app.route("/a/<slug>")
+	def article(slug: str):
+		a = Article.query.filter_by(slug=slug).first()
+		if not a:
+			abort(404)
+		return render_template("components/article.html", article=a)
+
+	@app.route("/q/<slug>", methods=["POST"])
+	def grade_quiz(slug):
+		a = Article.query.filter_by(slug=slug).first()
+		if not a:
+			abort(404)
+		quiz = a.get_quiz()
+		total = len(quiz)
+		correct = 0
+		answers = []
+		for i, q in enumerate(quiz, start=1):
+			if q["type"] == "single":
+				selected_answer = request.form.get(f"q{i}", "")
+				ok = str(q["answer"]) == str(selected_answer)
+			elif q["type"] == "multi":
+				correct_answers = set(str(answer) for answer in q["answers"])
+				selected_answers = set()
+				for j in range(len(q["options"])):
+					if request.form.get(f"q{i}_{j}") == "on":
+						selected_answers.add(str(j))
+				ok = selected_answers == correct_answers
+			else:
+				selected_answers = request.form.get(f"q{i}", "").strip()
+				ok = selected_answers.lower().strip() == q["answer"].lower().strip()
+			answers.append({"ok": ok})
+			if ok:
+				correct += 1
+		score = round(100 * correct / total) if total else 0
+		if current_user.is_authenticated:
+			db.session.add(
+				Quiz(
+					user_id=current_user.id,
+					article_id=a.id,
+					score=score,
+				)
+			)
 			db.session.commit()
-		return redirect(url_for("profile"))
+		html = quiz_result(score, answers)
+		return make_response(html)
 
 	@app.route("/mark_read/<slug>", methods=["POST"])
 	def mark_read(slug: str):
@@ -207,6 +239,15 @@ def register_routes(app: Flask) -> None:
 			db.session.add(Read(user_id=current_user.id, article_id=a.id))
 			db.session.commit()
 		return "", 204
+
+	@app.route("/new_password", methods=["POST"])
+	@login_required
+	def new_password():
+		password = request.form.get("password", "")
+		if password:
+			current_user.set_password(password)
+			db.session.commit()
+		return redirect(url_for("profile"))
 
 
 def read_text(path: Path) -> str:
