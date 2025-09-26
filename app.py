@@ -234,6 +234,10 @@ def parse_table_of_contents(lines: List[str]) -> List[Dict[str, str]]:
 	return toc
 
 
+def opinionated_slugify(text, _=None) -> str:
+	return slugify(text, separator="_", lowercase=False)
+
+
 def parse_article(path: Path) -> Dict[str, Any]:
 	title = path.stem.strip().title()
 	lines = read_text(path).splitlines()
@@ -263,12 +267,14 @@ def parse_article(path: Path) -> Dict[str, Any]:
 			continue
 		content_lines.append(line)
 	content = markdown.markdown(
-		"\n".join(content_lines), extensions=["codehilite", "fenced_code", "tables"]
+		"\n".join(content_lines),
+		extensions=["codehilite", "fenced_code", "tables", "toc"],
+		extension_configs={"toc": {"slugify": opinionated_slugify}},
 	)
 	toc = parse_table_of_contents(content_lines)
 	return {
 		"title": title,
-		"slug": slugify(title, separator="_", lowercase=False),
+		"slug": opinionated_slugify(title),
 		"modified_at": datetime.datetime.fromtimestamp(
 			path.stat().st_mtime, tz=datetime.timezone.utc
 		),
