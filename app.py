@@ -91,6 +91,157 @@ def load_user(id: str) -> User | None:
 	return User.query.get(int(id))
 
 
+def opinionated_slugify(text, _=None) -> str:
+	return slugify(text, separator="_", lowercase=False)
+
+
+def read_text(path: Path) -> str:
+	with open(path, "r", encoding="utf-8") as file:
+		return file.read()
+
+
+def parse_table_of_contents(lines: List[str]) -> List[Dict[str, str]]:
+	toc = []
+	for line in lines:
+		line = line.lstrip()
+		if line.startswith("#"):
+			header_level = len(line) - len(line.lstrip("#"))
+			if 1 <= header_level <= 6:
+				header_text = line[header_level:].strip()
+				if header_text:
+					header_anchor = header_text.replace(" ", "_")
+					toc.append(
+						{
+							"text": header_text,
+							"anchor": header_anchor,
+							"level": header_level,
+						}
+					)
+	return toc
+
+
+def parse_article(path: Path) -> Dict[str, Any]:
+	title = path.stem.strip().title()
+	lines = read_text(path).splitlines()
+	in_tags = False
+	in_mermaid = False
+	tags = []
+	content_lines = []
+	for line in lines:
+		if line.strip() == "---":
+			in_tags = not in_tags
+			continue
+		if in_tags:
+			if line.strip().lower() == "tags:":
+				continue
+			if line.lstrip().startswith("-"):
+				tag = line.lstrip()[1:].strip()
+				if tag:
+					tags.append(tag)
+			continue
+		if line.strip() == "```mermaid":
+			in_mermaid = True
+			content_lines.append('<pre class="mermaid">')
+			continue
+		if in_mermaid and line.strip() == "```":
+			in_mermaid = False
+			content_lines.append("</pre>")
+			continue
+		content_lines.append(line)
+	content = markdown.markdown(
+		"\n".join(content_lines),
+		extensions=["codehilite", "fenced_code", "tables", "toc"],
+		extension_configs={"toc": {"slugify": opinionated_slugify}},
+	)
+	toc = parse_table_of_contents(content_lines)
+	return {
+		"title": title,
+		"slug": opinionated_slugify(title),
+		"modified_at": datetime.datetime.fromtimestamp(
+			path.stat().st_mtime, tz=datetime.timezone.utc
+		),
+		"tags": ", ".join(tags),
+		"content": content,
+		"toc": toc,
+	}
+
+
+def parse_quiz(path: Path) -> List[Dict[str, Any]]:
+	if not path.exists():
+		return []
+	lines = read_text(path).splitlines()
+	quiz = []
+	q = None
+	for line in lines:
+		line = line.rstrip()
+		if line and line[0].isdigit():
+			if q:
+				quiz.append(q)
+			parts = line.split(". ", 1)
+			if len(parts) == 2:
+				prompt = parts[1].strip()
+				q = {"prompt": prompt, "options": [], "type": None}
+		elif line.startswith("- ") and q:
+			option_text = line[2:].strip()
+			if option_text.startswith("("):
+				if q["type"] is None:
+					q["type"] = "single"
+				if option_text.startswith("(x)"):
+					option = option_text[3:].strip()
+					q["options"].append(option)
+					q["answer"] = len(q["options"]) - 1
+				elif option_text.startswith("( )"):
+					option = option_text[3:].strip()
+					q["options"].append(option)
+			elif option_text.startswith("["):
+				if q["type"] is None:
+					q["type"] = "multi"
+					q["answers"] = []
+				if option_text.startswith("[x]"):
+					option = option_text[3:].strip()
+					q["options"].append(option)
+					q["answers"].append(len(q["options"]) - 1)
+				elif option_text.startswith("[ ]"):
+					option = option_text[3:].strip()
+					q["options"].append(option)
+			elif option_text.startswith("= "):
+				q["type"] = "text"
+				q["answer"] = option_text[2:].strip()
+	if q:
+		quiz.append(q)
+	return quiz
+
+
+def load_articles(root: Path) -> None:
+	for article_path in root.glob("*.md"):
+		article_data = parse_article(article_path)
+		quiz_path = root.parent / "quizzes" / f"{article_path.stem}.md"
+		quiz_data = parse_quiz(quiz_path)
+		article = Article.query.filter_by(slug=article_data["slug"]).first()
+		if article is None:
+			article = Article(slug=article_data["slug"], file_path=str(article_path))
+			db.session.add(article)
+		article.title = article_data["title"]
+		article.modified_at = article_data["modified_at"]
+		article.tags = article_data["tags"]
+		article.content = article_data["content"]
+		article.toc = json.dumps(article_data["toc"], indent="\t", ensure_ascii=False)
+		article.quiz = json.dumps(quiz_data, indent="\t", ensure_ascii=False)
+	db.session.commit()
+
+
+def quiz_result(score: int, answers: List[Dict[str, bool]]) -> str:
+	results = [
+		f"<li>Q{idx+1}: {'Correct' if answer['ok'] else 'Incorrect'}</li>"
+		for idx, answer in enumerate(answers)
+	]
+	return (
+		f'<div class="border border-green-400 p-4 mt-4">'
+		f'<p class="mb-2">Score: {score}%</p>'
+		f'<ul class="list-disc pl-6 space-y-1">{"".join(results)}</ul></div>'
+	)
+
+
 def register_routes(app: Flask) -> None:
 	@app.route("/")
 	def index():
@@ -250,157 +401,6 @@ def register_routes(app: Flask) -> None:
 		return redirect(url_for("profile"))
 
 
-def read_text(path: Path) -> str:
-	with open(path, "r", encoding="utf-8") as file:
-		return file.read()
-
-
-def parse_table_of_contents(lines: List[str]) -> List[Dict[str, str]]:
-	toc = []
-	for line in lines:
-		line = line.lstrip()
-		if line.startswith("#"):
-			header_level = len(line) - len(line.lstrip("#"))
-			if 1 <= header_level <= 6:
-				header_text = line[header_level:].strip()
-				if header_text:
-					header_anchor = header_text.replace(" ", "_")
-					toc.append(
-						{
-							"text": header_text,
-							"anchor": header_anchor,
-							"level": header_level,
-						}
-					)
-	return toc
-
-
-def opinionated_slugify(text, _=None) -> str:
-	return slugify(text, separator="_", lowercase=False)
-
-
-def parse_article(path: Path) -> Dict[str, Any]:
-	title = path.stem.strip().title()
-	lines = read_text(path).splitlines()
-	in_tags = False
-	in_mermaid = False
-	tags = []
-	content_lines = []
-	for line in lines:
-		if line.strip() == "---":
-			in_tags = not in_tags
-			continue
-		if in_tags:
-			if line.strip().lower() == "tags:":
-				continue
-			if line.lstrip().startswith("-"):
-				tag = line.lstrip()[1:].strip()
-				if tag:
-					tags.append(tag)
-			continue
-		if line.strip() == "```mermaid":
-			in_mermaid = True
-			content_lines.append('<pre class="mermaid">')
-			continue
-		if in_mermaid and line.strip() == "```":
-			in_mermaid = False
-			content_lines.append("</pre>")
-			continue
-		content_lines.append(line)
-	content = markdown.markdown(
-		"\n".join(content_lines),
-		extensions=["codehilite", "fenced_code", "tables", "toc"],
-		extension_configs={"toc": {"slugify": opinionated_slugify}},
-	)
-	toc = parse_table_of_contents(content_lines)
-	return {
-		"title": title,
-		"slug": opinionated_slugify(title),
-		"modified_at": datetime.datetime.fromtimestamp(
-			path.stat().st_mtime, tz=datetime.timezone.utc
-		),
-		"tags": ", ".join(tags),
-		"content": content,
-		"toc": toc,
-	}
-
-
-def parse_quiz(path: Path) -> List[Dict[str, Any]]:
-	if not path.exists():
-		return []
-	lines = read_text(path).splitlines()
-	quiz = []
-	q = None
-	for line in lines:
-		line = line.rstrip()
-		if line and line[0].isdigit():
-			if q:
-				quiz.append(q)
-			parts = line.split(". ", 1)
-			if len(parts) == 2:
-				prompt = parts[1].strip()
-				q = {"prompt": prompt, "options": [], "type": None}
-		elif line.startswith("- ") and q:
-			option_text = line[2:].strip()
-			if option_text.startswith("("):
-				if q["type"] is None:
-					q["type"] = "single"
-				if option_text.startswith("(x)"):
-					option = option_text[3:].strip()
-					q["options"].append(option)
-					q["answer"] = len(q["options"]) - 1
-				elif option_text.startswith("( )"):
-					option = option_text[3:].strip()
-					q["options"].append(option)
-			elif option_text.startswith("["):
-				if q["type"] is None:
-					q["type"] = "multi"
-					q["answers"] = []
-				if option_text.startswith("[x]"):
-					option = option_text[3:].strip()
-					q["options"].append(option)
-					q["answers"].append(len(q["options"]) - 1)
-				elif option_text.startswith("[ ]"):
-					option = option_text[3:].strip()
-					q["options"].append(option)
-			elif option_text.startswith("= "):
-				q["type"] = "text"
-				q["answer"] = option_text[2:].strip()
-	if q:
-		quiz.append(q)
-	return quiz
-
-
-def load_articles(root: Path) -> None:
-	for article_path in root.glob("*.md"):
-		article_data = parse_article(article_path)
-		quiz_path = root.parent / "quizzes" / f"{article_path.stem}.md"
-		quiz_data = parse_quiz(quiz_path)
-		article = Article.query.filter_by(slug=article_data["slug"]).first()
-		if article is None:
-			article = Article(slug=article_data["slug"], file_path=str(article_path))
-			db.session.add(article)
-		article.title = article_data["title"]
-		article.modified_at = article_data["modified_at"]
-		article.tags = article_data["tags"]
-		article.content = article_data["content"]
-		article.toc = json.dumps(article_data["toc"], indent="\t", ensure_ascii=False)
-		article.quiz = json.dumps(quiz_data, indent="\t", ensure_ascii=False)
-	db.session.commit()
-
-
-def quiz_result(score: int, answers: List[Dict[str, bool]]) -> str:
-	results = [
-		f"<li>Q{idx+1}: {'Correct' if answer['ok'] else 'Incorrect'}</li>"
-		for idx, answer in enumerate(answers)
-	]
-	return (
-		f'<div class="border border-green-400 p-4 mt-4">'
-		f'<p class="mb-2">Score: {score}%</p>'
-		f'<ul class="list-disc pl-6 space-y-1">{"".join(results)}</ul></div>'
-	)
-
-
 if __name__ == "__main__":
 	app = Flask(__name__)
 	app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///bpu.im.db"
@@ -410,5 +410,5 @@ if __name__ == "__main__":
 	with app.app_context():
 		db.create_all()
 		load_articles(Path(__file__).parent / "articles")
-	register_routes(app)
+		register_routes(app)
 	app.run()
