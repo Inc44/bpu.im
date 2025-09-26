@@ -4,7 +4,7 @@
 		<h1 class="font-bold mb-6 text-3xl">{{ article.title }}</h1>
 		<div class="markdown">{{ article.content|safe }}</div>{% set quiz = article.get_quiz() %}{% if quiz and quiz|length>0 %}<section class="border border-green-400 mt-8 p-8">
 			<h2 class="font-bold mb-4 text-2xl">Quiz</h2>
-			<form hx-post="/quiz/{{ article.slug }}" hx-target="#quiz-result" hx-swap="innerHTML" class="space-y-6">{% for q in quiz %}{% set i=loop.index %}<div>
+			<form hx-post="/q/{{ article.slug }}" hx-target="#quiz-result" hx-swap="innerHTML" class="space-y-6">{% for q in quiz %}{% set i=loop.index %}<div>
 					<p class="font-semibold mb-2">Q{{ i }}. {{ q.prompt }}</p>{% if q.type=='single' %}<div class="space-y-1">{% for opt in q.options %}{% set j=loop.index0 %}<label class="flex gap-2"><input type="radio" name="q{{ i }}" value="{{ j }}" class="accent-green-400"><span>{{ opt }}</span></label>{% endfor %}</div>{% elif q.type=='multi' %}<div class="space-y-1">{% for opt in q.options %}{% set j=loop.index0 %}<label class="flex gap-2"><input type="checkbox" name="q{{ i }}_{{ j }}" class="accent-green-400"><span>{{ opt }}</span></label>{% endfor %}</div>{% elif q.type=='text' %}<input type="text" name="q{{ i }}" class="bg-black border border-green-400 px-2 py-1 text-green-400 w-full">{% endif %}
 				</div>{% endfor %}<button type="submit" class="border border-green-400 hover:bg-green-400 hover:text-black px-4 py-2">Submit</button>
 			</form>

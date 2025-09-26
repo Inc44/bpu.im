@@ -326,13 +326,55 @@ def parse_article(path: Path) -> Dict[str, Any]:
 
 
 def parse_quiz(path: Path) -> List[Dict[str, Any]]:
-	return []
+	if not path.exists():
+		return []
+	lines = read_text(path).splitlines()
+	quiz = []
+	q = None
+	for line in lines:
+		line = line.rstrip()
+		if line and line[0].isdigit():
+			if q:
+				quiz.append(q)
+			parts = line.split(". ", 1)
+			if len(parts) == 2:
+				prompt = parts[1].strip()
+				q = {"prompt": prompt, "options": [], "type": None}
+		elif line.startswith("- ") and q:
+			option_text = line[2:].strip()
+			if option_text.startswith("("):
+				if q["type"] is None:
+					q["type"] = "single"
+				if option_text.startswith("(x)"):
+					option = option_text[3:].strip()
+					q["options"].append(option)
+					q["answer"] = len(q["options"]) - 1
+				elif option_text.startswith("( )"):
+					option = option_text[3:].strip()
+					q["options"].append(option)
+			elif option_text.startswith("["):
+				if q["type"] is None:
+					q["type"] = "multi"
+					q["answers"] = []
+				if option_text.startswith("[x]"):
+					option = option_text[3:].strip()
+					q["options"].append(option)
+					q["answers"].append(len(q["options"]) - 1)
+				elif option_text.startswith("[ ]"):
+					option = option_text[3:].strip()
+					q["options"].append(option)
+			elif option_text.startswith("= "):
+				q["type"] = "text"
+				q["answer"] = option_text[2:].strip()
+	if q:
+		quiz.append(q)
+	return quiz
 
 
 def load_articles(root: Path) -> None:
 	for article_path in root.glob("*.md"):
 		article_data = parse_article(article_path)
-		quiz_path = article_path.parent / "quizzes" / f"{article_path.stem}.md"
+		quiz_path = root.parent / "quizzes" / f"{article_path.stem}.md"
 		quiz_data = parse_quiz(quiz_path)
 		article = Article.query.filter_by(slug=article_data["slug"]).first()
 		if article is None:
